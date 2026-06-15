@@ -25,6 +25,8 @@ const router = createRouter({
   },
   seen,
   enrichedCompanies: new Set<string>(),
+  debug: input.debug ?? false,
+  debugState: { detailDumped: false, searchDumped: false },
 });
 
 const proxyConfiguration = await Actor.createProxyConfiguration(

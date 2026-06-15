@@ -10,6 +10,8 @@ interface RouterDeps {
   input: Required<Pick<Input, 'country' | 'maxItemsPerSearch' | 'parseCompanyDetails' | 'fetchFullDescription' | 'saveOnlyUniqueItems' | 'followApplyRedirects'>>;
   seen: SeenStore;
   enrichedCompanies: Set<string>;
+  debug: boolean;
+  debugState: { detailDumped: boolean; searchDumped: boolean };
 }
 
 export function createRouter(deps: RouterDeps) {
@@ -26,6 +28,14 @@ export function createRouter(deps: RouterDeps) {
       log.warning(`No JSON state found on ${request.url}`);
       return;
     }
+
+    if (deps.debug && !deps.debugState.searchDumped) {
+      deps.debugState.searchDumped = true;
+      const debugStore = await Actor.openKeyValueStore('detail-debug-raw');
+      await debugStore.setValue(`search-${data.searchId.replace(/[^a-z0-9-]/gi, '_').slice(0, 80)}`, json);
+      log.info(`DEBUG: dumped search JSON to KV store 'detail-debug-raw'`);
+    }
+
     const domain = new URL(request.url).host;
     const { jobs, nextStart } = parseSearchPage(json, domain);
     log.info(`Search ${data.searchId}: ${jobs.length} jobs on ${request.url}`);
@@ -60,6 +70,14 @@ export function createRouter(deps: RouterDeps) {
 
     await dismissOverlays(page);
     const json = await readNextDataOrMosaic(page);
+
+    if (deps.debug && json && !deps.debugState.detailDumped) {
+      deps.debugState.detailDumped = true;
+      const debugStore = await Actor.openKeyValueStore('detail-debug-raw');
+      await debugStore.setValue(`detail-${data.partial.id}`, json);
+      log.info(`DEBUG: dumped detail JSON for jobId=${data.partial.id} to KV store 'detail-debug-raw'`);
+    }
+
     const detail = json ? parseDetailJson(extractJobInfo(json)) : null;
     if (!detail) {
       log.warning(`Detail parse failed: ${request.url}`);
