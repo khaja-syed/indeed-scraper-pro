@@ -1,6 +1,6 @@
 import { Actor } from 'apify';
 
-const STORE_NAME = 'INDEED_SEEN_IDS';
+const STORE_NAME = 'indeed-seen-ids';
 const KEY = 'seen';
 
 interface SeenState {

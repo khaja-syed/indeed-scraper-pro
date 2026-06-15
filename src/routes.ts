@@ -91,7 +91,7 @@ export function createRouter(deps: RouterDeps) {
     const details = json ? parseCompanyPage(json, request.url) : null;
     if (!details) return;
     await Actor.charge({ eventName: 'company-enriched' }).catch(() => undefined);
-    const store = await Actor.openKeyValueStore('COMPANY_DETAILS');
+    const store = await Actor.openKeyValueStore('company-details');
     await store.setValue(slug(data.companyKey), details);
   });
 
