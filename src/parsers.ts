@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { PartialJob, CompanyDetails } from './types.js';
 
-export function contentHash(job: Pick<PartialJob, 'positionName' | 'company' | 'location' | 'salary'> & { description?: string }): string {
+export function contentHash(job: Pick<PartialJob, 'positionName' | 'company' | 'location' | 'salary'> & { description?: string | undefined }): string {
   const payload = [job.positionName, job.company, job.location, job.salary ?? '', job.description ?? ''].join('|');
   return createHash('sha1').update(payload).digest('hex');
 }
