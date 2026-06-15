@@ -127,49 +127,64 @@ export interface DetailPayload {
   isExpired: boolean;
 }
 
-interface DetailJson {
-  jobInfoWrapperModel?: {
-    jobInfoModel?: {
-      sanitizedJobDescription?: string;
-      jobDescriptionSectionModel?: { html?: string };
-      benefitsModel?: { benefits?: { label?: string }[] };
-    };
-  };
-  hostQueryExecutionResult?: { data?: { jobData?: { results?: { job?: { applyButtonLink?: string } }[] } } };
-  expired?: boolean;
+export interface DescriptionExtractInput {
+  descriptionHTML: string;
+  externalApplyLink?: string | undefined;
+  isExpired?: boolean;
 }
 
-export function parseDetailJson(json: DetailJson): DetailPayload {
-  const info = json.jobInfoWrapperModel?.jobInfoModel;
-  const html = info?.jobDescriptionSectionModel?.html ?? '';
-  const description = stripHtml(info?.sanitizedJobDescription ?? html);
-  const benefits = (info?.benefitsModel?.benefits ?? []).map((b) => b.label ?? '').filter(Boolean);
-  const requirements = extractRequirements(description);
-  const externalApplyLink = json.hostQueryExecutionResult?.data?.jobData?.results?.[0]?.job?.applyButtonLink;
+export function parseDescriptionHTML(input: DescriptionExtractInput): DetailPayload {
+  const html = input.descriptionHTML ?? '';
+  const description = stripHtml(html);
+  const sections = sectionizeHTML(html);
+  const requirements = extractListItems(sections, /requirement|qualification|what you'?ll need|must have/i);
+  const benefits = extractListItems(sections, /benefit|perks|what we offer|we offer/i);
   return {
     description,
     descriptionHTML: html,
     benefits,
     requirements,
-    ...(externalApplyLink ? { externalApplyLink } : {}),
-    isExpired: Boolean(json.expired),
+    ...(input.externalApplyLink ? { externalApplyLink: input.externalApplyLink } : {}),
+    isExpired: Boolean(input.isExpired),
   };
 }
 
-const REQ_HEADER = /(requirements|qualifications|what you'?ll need|must have)\s*[:\n]/i;
-function extractRequirements(text: string): string[] {
-  const idx = text.search(REQ_HEADER);
-  if (idx < 0) return [];
-  const slice = text.slice(idx, idx + 2000);
-  return slice
-    .split(/\n+/)
-    .map((line) => line.replace(/^[\s•\-*\d.]+/, '').trim())
-    .filter((line) => line.length > 6 && line.length < 240)
-    .slice(1, 12);
+interface Section {
+  header: string;
+  items: string[];
+}
+
+function sectionizeHTML(html: string): Section[] {
+  const sections: Section[] = [];
+  const headerSplit = html.split(/<(?:h[1-6]|p|strong|b)[^>]*>([^<]{2,80})<\/(?:h[1-6]|p|strong|b)>/i);
+  for (let i = 1; i < headerSplit.length; i += 2) {
+    const header = (headerSplit[i] ?? '').trim();
+    const body = headerSplit[i + 1] ?? '';
+    const items = Array.from(body.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi))
+      .map((m) => stripHtml(m[1] ?? ''))
+      .filter((s) => s.length > 3 && s.length < 300);
+    if (items.length) sections.push({ header, items });
+  }
+  return sections;
+}
+
+function extractListItems(sections: Section[], headerPattern: RegExp): string[] {
+  const match = sections.find((s) => headerPattern.test(s.header));
+  return match ? match.items.slice(0, 12) : [];
 }
 
 function stripHtml(input: string): string {
-  return input.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return input.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function parseCompanyPage(json: unknown, url: string): CompanyDetails | null {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { parseSearchPage, parseSalaryRange, parseDetailJson, contentHash } from '../src/parsers.js';
+import { parseSearchPage, parseSalaryRange, parseDescriptionHTML, contentHash } from '../src/parsers.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const searchFixture = JSON.parse(readFileSync(join(here, 'fixtures/indeed-search.json'), 'utf8'));
@@ -67,25 +67,48 @@ describe('parseSalaryRange', () => {
   });
 });
 
-describe('parseDetailJson', () => {
-  it('extracts description, benefits, and apply link', () => {
-    const out = parseDetailJson({
-      jobInfoWrapperModel: {
-        jobInfoModel: {
-          sanitizedJobDescription: '<p>Build great software. Requirements: 5+ years TS.</p>',
-          jobDescriptionSectionModel: { html: '<p>Build great software.</p>' },
-          benefitsModel: { benefits: [{ label: '401k' }, { label: 'Health' }] },
-        },
-      },
-      hostQueryExecutionResult: {
-        data: { jobData: { results: [{ job: { applyButtonLink: 'https://acme.com/apply/abc' } }] } },
-      },
-      expired: false,
+describe('parseDescriptionHTML', () => {
+  const descriptionHTML = readFileSync(join(here, 'fixtures/indeed-detail-description.html'), 'utf8');
+
+  it('extracts plain-text description from real-shape HTML', () => {
+    const out = parseDescriptionHTML({ descriptionHTML });
+    expect(out.description).toContain('Senior Software Engineer');
+    expect(out.description).toContain('TypeScript');
+    expect(out.description.length).toBeGreaterThan(200);
+    expect(out.descriptionHTML).toBe(descriptionHTML);
+  });
+
+  it('extracts requirements list from Requirements section', () => {
+    const out = parseDescriptionHTML({ descriptionHTML });
+    expect(out.requirements).toHaveLength(4);
+    expect(out.requirements[0]).toMatch(/5\+ years/);
+  });
+
+  it('extracts benefits list from Benefits section', () => {
+    const out = parseDescriptionHTML({ descriptionHTML });
+    expect(out.benefits).toContain('401(k) with company match');
+    expect(out.benefits).toContain('Unlimited PTO');
+  });
+
+  it('threads externalApplyLink and isExpired through unchanged', () => {
+    const out = parseDescriptionHTML({
+      descriptionHTML: '<div id="jobDescriptionText"><p>x</p></div>',
+      externalApplyLink: 'https://acme.com/apply/abc',
+      isExpired: true,
     });
-    expect(out.description).toContain('Build great software');
-    expect(out.benefits).toEqual(['401k', 'Health']);
     expect(out.externalApplyLink).toBe('https://acme.com/apply/abc');
-    expect(out.isExpired).toBe(false);
+    expect(out.isExpired).toBe(true);
+  });
+
+  it('returns empty arrays when sections are missing', () => {
+    const out = parseDescriptionHTML({ descriptionHTML: '<p>Just a paragraph, no headers.</p>' });
+    expect(out.requirements).toEqual([]);
+    expect(out.benefits).toEqual([]);
+  });
+
+  it('decodes common HTML entities in description', () => {
+    const out = parseDescriptionHTML({ descriptionHTML: '<p>Tom &amp; Jerry &nbsp; team</p>' });
+    expect(out.description).toBe('Tom & Jerry team');
   });
 });
 

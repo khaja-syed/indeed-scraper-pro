@@ -2,7 +2,7 @@ import { Actor } from 'apify';
 import { createPlaywrightRouter, log, sleep } from 'crawlee';
 import type { Page } from 'playwright';
 import { buildSearchUrl, buildDetailUrl, RESULTS_PER_PAGE } from './constants.js';
-import { contentHash, parseCompanyPage, parseDetailJson, parseSearchPage } from './parsers.js';
+import { contentHash, parseCompanyPage, parseDescriptionHTML, parseSearchPage } from './parsers.js';
 import { SeenStore } from './dedup.js';
 import type { CountryCode, Input, Job, PartialJob, UserData } from './types.js';
 
@@ -78,16 +78,23 @@ export function createRouter(deps: RouterDeps) {
       log.info(`DEBUG: dumped detail JSON for jobId=${data.partial.id} to KV store 'detail-debug-raw'`);
     }
 
-    const detail = json ? parseDetailJson(extractJobInfo(json)) : null;
-    if (!detail) {
-      log.warning(`Detail parse failed: ${request.url}`);
+    const dom = await extractDetailFromDom(page);
+    if (!dom) {
+      log.warning(`Detail extraction failed (no #jobDescriptionText): ${request.url}`);
       await emitJob(data.partial, undefined, deps);
       return;
     }
 
-    if (deps.input.followApplyRedirects && detail.externalApplyLink) {
-      detail.externalApplyLink = await resolveRedirect(page, detail.externalApplyLink);
+    let externalApplyLink = dom.externalApplyLink;
+    if (deps.input.followApplyRedirects && externalApplyLink) {
+      externalApplyLink = await resolveRedirect(page, externalApplyLink);
     }
+
+    const detail = parseDescriptionHTML({
+      descriptionHTML: dom.descriptionHTML,
+      ...(externalApplyLink ? { externalApplyLink } : {}),
+      isExpired: dom.isExpired,
+    });
 
     await emitJob({ ...data.partial, source: 'detail' }, detail, deps);
 
@@ -116,7 +123,7 @@ export function createRouter(deps: RouterDeps) {
   return router;
 }
 
-async function emitJob(partial: PartialJob, detail: Awaited<ReturnType<typeof parseDetailJson>> | undefined, deps: RouterDeps): Promise<void> {
+async function emitJob(partial: PartialJob, detail: ReturnType<typeof parseDescriptionHTML> | undefined, deps: RouterDeps): Promise<void> {
   const hash = contentHash({ ...partial, description: detail?.description });
   if (deps.input.saveOnlyUniqueItems && !deps.seen.changed(partial.id, hash)) return;
 
@@ -144,9 +151,23 @@ async function readNextDataOrMosaic(page: Page): Promise<unknown | null> {
   });
 }
 
-function extractJobInfo(json: unknown): Parameters<typeof parseDetailJson>[0] {
-  const root = json as { props?: { pageProps?: unknown } } | null;
-  return (root?.props?.pageProps ?? root) as Parameters<typeof parseDetailJson>[0];
+async function extractDetailFromDom(page: Page): Promise<{ descriptionHTML: string; externalApplyLink?: string; isExpired: boolean } | null> {
+  await page.waitForSelector('#jobDescriptionText', { timeout: 8000 }).catch(() => null);
+  const descriptionHTML = await page.locator('#jobDescriptionText').first().innerHTML().catch(() => '');
+  if (!descriptionHTML || descriptionHTML.length < 30) return null;
+
+  const externalApplyLink = await page
+    .locator('a[id*="applyButtonLinkContainer"], a[data-tn-element="apply-button"], a[aria-label*="Apply on company"]')
+    .first()
+    .getAttribute('href')
+    .catch(() => null);
+
+  const isExpired = (await page
+    .locator('text=/this job (?:is no longer|has expired)/i')
+    .count()
+    .catch(() => 0)) > 0;
+
+  return { descriptionHTML, ...(externalApplyLink ? { externalApplyLink } : {}), isExpired };
 }
 
 async function dismissOverlays(page: Page): Promise<void> {
