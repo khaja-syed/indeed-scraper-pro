@@ -1,0 +1,43 @@
+{
+  "mosaic": {
+    "providerData": {
+      "mosaic-provider-jobcards": {
+        "metaData": {
+          "mosaicProviderJobCardsModel": {
+            "totalJobCount": 38,
+            "start": 0,
+            "pageSize": 15,
+            "results": [
+              {
+                "jobkey": "abc123",
+                "title": "Senior Software Engineer",
+                "company": "Acme Corp",
+                "companyOverviewLink": "/cmp/Acme-Corp",
+                "formattedLocation": "San Francisco, CA",
+                "remoteWorkModel": { "type": "EXCLUSIVELY_REMOTE" },
+                "salarySnippet": { "text": "$160,000 - $200,000 a year", "currency": "USD" },
+                "jobTypes": ["Fulltime"],
+                "companyRating": 4.2,
+                "companyReviewCount": 1234,
+                "formattedRelativeTime": "2 days ago",
+                "viewJobLink": "/viewjob?jk=abc123"
+              },
+              {
+                "jobkey": "def456",
+                "title": "Product Manager",
+                "company": "Globex",
+                "formattedLocation": "Remote",
+                "remoteWorkModel": { "type": "HYBRID" },
+                "estimatedSalary": { "formattedRange": "$130k - $170k a year" },
+                "formattedRelativeTime": "Today"
+              },
+              {
+                "title": "Missing job key — should be skipped"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

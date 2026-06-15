@@ -1,0 +1,17 @@
+{
+  "actorSpecification": 1,
+  "name": "indeed-scraper-pro",
+  "title": "Indeed Scraper Pro",
+  "description": "Fast, accurate Indeed job scraper. Extracts listings, salaries, descriptions, company data and apply links across 60+ countries. Pay-per-result.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "meta": { "templateId": "ts-crawlee-playwright-chrome" },
+  "input": "./input_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "minMemoryMbytes": 1024,
+  "maxMemoryMbytes": 4096,
+  "dockerfile": "../Dockerfile",
+  "categories": ["JOBS", "ECOMMERCE"]
+}

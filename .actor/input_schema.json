@@ -1,0 +1,92 @@
+{
+  "title": "Indeed Scraper Pro — Input",
+  "description": "Provide a search (position + location + country) or a list of Indeed start URLs. Both can be combined.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "position": {
+      "title": "Position / keywords",
+      "type": "string",
+      "description": "Job title or keywords (e.g. 'senior react developer').",
+      "editor": "textfield",
+      "example": "software engineer"
+    },
+    "location": {
+      "title": "Location",
+      "type": "string",
+      "description": "City, region, postcode, or 'remote'.",
+      "editor": "textfield",
+      "example": "San Francisco, CA"
+    },
+    "country": {
+      "title": "Country",
+      "type": "string",
+      "description": "ISO country code; routes to the matching Indeed domain (US → indeed.com, GB → uk.indeed.com, …).",
+      "editor": "select",
+      "default": "US",
+      "enum": ["US","GB","CA","AU","DE","FR","NL","IN","IE","SG","NZ","ZA","AE","JP","BR","MX","ES","IT","SE","CH","BE","AT","DK","FI","NO","PL","PT"],
+      "enumTitles": ["United States","United Kingdom","Canada","Australia","Germany","France","Netherlands","India","Ireland","Singapore","New Zealand","South Africa","UAE","Japan","Brazil","Mexico","Spain","Italy","Sweden","Switzerland","Belgium","Austria","Denmark","Finland","Norway","Poland","Portugal"]
+    },
+    "maxItemsPerSearch": {
+      "title": "Max items per search",
+      "type": "integer",
+      "description": "Hard cap on results returned per search/start URL. Indeed itself usually caps at ~1,000 — split by location or date if you need more.",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 5000
+    },
+    "startUrls": {
+      "title": "Start URLs",
+      "type": "array",
+      "description": "Indeed search, category, or company-jobs URLs (e.g. https://www.indeed.com/cmp/Google/jobs).",
+      "editor": "requestListSources",
+      "default": []
+    },
+    "parseCompanyDetails": {
+      "title": "Enrich with company details",
+      "type": "boolean",
+      "description": "Visit each company page once per run to collect rating, reviews count, HQ, size and industry. Charged separately.",
+      "default": false
+    },
+    "fetchFullDescription": {
+      "title": "Fetch full job description",
+      "type": "boolean",
+      "description": "Hit the detail page to get the full HTML description, requirements and external apply link. Disable to keep scrapes fast and cheap when list-page data is enough.",
+      "default": true
+    },
+    "saveOnlyUniqueItems": {
+      "title": "Deduplicate across runs",
+      "type": "boolean",
+      "description": "Skip listings already saved in previous runs (uses a per-Actor key-value store keyed on Indeed job ID).",
+      "default": true
+    },
+    "followApplyRedirects": {
+      "title": "Resolve external apply links",
+      "type": "boolean",
+      "description": "Follow redirects on 'Apply on company site' to capture the final URL. Adds latency.",
+      "default": false
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Apify Proxy is recommended; residential is required for high volume.",
+      "editor": "proxy",
+      "default": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"] }
+    },
+    "maxConcurrency": {
+      "title": "Max concurrency",
+      "type": "integer",
+      "description": "Parallel browser pages. Higher = faster + more proxy spend + higher block risk.",
+      "default": 8,
+      "minimum": 1,
+      "maximum": 32
+    },
+    "debug": {
+      "title": "Debug mode",
+      "type": "boolean",
+      "description": "Verbose logs and per-page snapshots saved to the key-value store.",
+      "default": false
+    }
+  },
+  "required": []
+}

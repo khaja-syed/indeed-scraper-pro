@@ -1,0 +1,24 @@
+{
+  "name": "indeed-scraper-pro",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "High-fidelity Indeed job scraper Actor for Apify",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node dist/main.js",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "apify": "^3.2.6",
+    "crawlee": "^3.11.5",
+    "playwright": "1.47.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  }
+}

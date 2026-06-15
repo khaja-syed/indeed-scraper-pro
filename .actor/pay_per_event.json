@@ -1,0 +1,26 @@
+{
+  "actorSpecification": 1,
+  "pricingModel": "PAY_PER_EVENT",
+  "events": {
+    "actor-start": {
+      "eventTitle": "Actor start",
+      "eventDescription": "Flat fee charged once per run, covers session warmup.",
+      "eventPriceUsd": 0.02
+    },
+    "job-listing": {
+      "eventTitle": "Job listing scraped (list-page only)",
+      "eventDescription": "One Indeed listing extracted from a search/results page.",
+      "eventPriceUsd": 0.0025
+    },
+    "job-listing-with-details": {
+      "eventTitle": "Job listing with full description",
+      "eventDescription": "Listing enriched via the detail page (full description, requirements, external apply link).",
+      "eventPriceUsd": 0.005
+    },
+    "company-enriched": {
+      "eventTitle": "Company profile enriched",
+      "eventDescription": "Company page visited once per run to attach rating, reviews count, HQ, size, industry.",
+      "eventPriceUsd": 0.001
+    }
+  }
+}

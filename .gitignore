@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+storage
+apify_storage
+crawlee_storage
+coverage
