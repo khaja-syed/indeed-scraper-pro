@@ -14,7 +14,7 @@ await Actor.charge({ eventName: 'actor-start' }).catch(() => undefined);
 const seen = new SeenStore();
 if (input.saveOnlyUniqueItems !== false) await seen.init();
 
-const router = createRouter({
+const { router, failedRequestHandler } = createRouter({
   input: {
     country: input.country ?? 'US',
     maxItemsPerSearch: input.maxItemsPerSearch ?? 100,
@@ -38,8 +38,8 @@ const crawler = new PlaywrightCrawler({
   requestHandler: router,
   maxConcurrency: input.maxConcurrency ?? 8,
   maxRequestRetries: 5,
-  navigationTimeoutSecs: 60,
-  requestHandlerTimeoutSecs: 90,
+  navigationTimeoutSecs: 30,
+  requestHandlerTimeoutSecs: 45,
   launchContext: { launchOptions: { headless: true } },
   browserPoolOptions: {
     useFingerprints: true,
@@ -59,19 +59,28 @@ const crawler = new PlaywrightCrawler({
       });
     },
   ],
-  failedRequestHandler: async ({ request, error }) => {
-    log.error(`FAILED ${request.url}: ${(error as Error).message}`);
-  },
+  failedRequestHandler,
 });
 
 const initial = buildInitialRequests(input);
 if (initial.length === 0) {
   log.warning('No position/location and no startUrls provided. Nothing to do.');
+  await Actor.exit();
 } else {
   await crawler.run(initial);
 }
 
 if (input.saveOnlyUniqueItems !== false) await seen.flush();
+
+const dataset = await Actor.openDataset();
+const info = await dataset.getInfo();
+const itemCount = info?.itemCount ?? 0;
+log.info(`Run finished. Items in dataset: ${itemCount}`);
+
+if (itemCount === 0 && initial.length > 0) {
+  await Actor.fail('No jobs scraped. Most likely Indeed blocked all requests for this proxy/country combination. Try a lower maxConcurrency, a different country, or RESIDENTIAL proxy.');
+}
+
 await Actor.exit();
 
 function localeFor(country: string): string {

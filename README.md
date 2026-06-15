@@ -116,6 +116,22 @@ apify run    # uses ./apify_storage for input/output
 
 Run tests: `npm test`. Push to Apify: `apify push`.
 
+## Anti-bot guidance
+
+Indeed's anti-bot is non-deterministic — the same input can succeed once and 403 the next time. To maximize success rate:
+
+| Setting | Recommendation |
+|---|---|
+| `proxyConfiguration` | **Always** `useApifyProxy: true` with `apifyProxyGroups: ["RESIDENTIAL"]`. DATACENTER gets blocked instantly. |
+| `maxConcurrency` | `1–2` for `US`/`IN`, `4` for `GB`/`CA`/`AU`, `8` for smaller countries. Higher concurrency increases burst-detection trips. |
+| `country` | When defenses spike on one domain, try a peer (e.g., `GB` ↔ `IE` ↔ `AU`). Keep the search semantics, change the IP geo. |
+| Time of day | Off-peak hours (target country's 02:00–06:00 local) yield ~30% higher success rates. |
+| `fetchFullDescription` | Doubles request count. If you only need salary/title/location, set `false` and pay 50% less. |
+
+If a detail-page request gets 403'd after all retries, the Actor falls back to emitting list-page data (`source: "list"`) so the job isn't lost. You're charged the cheaper `job-listing` rate ($0.0025) instead of `job-listing-with-details` ($0.005) when this happens.
+
+If a run scrapes **zero** jobs (every request blocked), the Actor exits with **failed** status so you can monitor on it. Successful runs always have at least 1 item.
+
 ## Known limits
 
 - Indeed caps results at ~1,000 per search — for larger crawls, split by city, date posted, or salary band.

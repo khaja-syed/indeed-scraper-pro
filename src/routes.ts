@@ -120,7 +120,17 @@ export function createRouter(deps: RouterDeps) {
     await store.setValue(slug(data.companyKey), details);
   });
 
-  return router;
+  const failedRequestHandler = async (ctx: { request: { url: string; userData: unknown } }, error: unknown) => {
+    const data = ctx.request.userData as UserData | undefined;
+    if (data?.label === 'DETAIL' && data.partial) {
+      log.warning(`DETAIL failed after retries, emitting list-only fallback: jobId=${data.partial.id}`);
+      await emitJob(data.partial, undefined, deps);
+      return;
+    }
+    log.error(`FAILED ${ctx.request.url}: ${(error as Error).message}`);
+  };
+
+  return { router, failedRequestHandler };
 }
 
 async function emitJob(partial: PartialJob, detail: ReturnType<typeof parseDescriptionHTML> | undefined, deps: RouterDeps): Promise<void> {
